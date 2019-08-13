@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        .inp {
+            border: 1px solid #949494;
+            border-radius: 3px;
+            padding: 10px;
+            font-size: 110%;
+        }
+    </style>
+    <link rel="stylesheet" href="la_color_picker.css">
+    <!--Bootstrap CSS-->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="container-fluid" style="height:100%">
+        <div class="row">
+            <div class="col">
+                <h3>Map Demo</h3>
+            </div>
+        </div>
+        <!---Map Div-->
+        <div class="row" name="main" style="height:100%">
+            <div class="col">
+                <div id="map" style="height: 100%; width: 100%"></div>
+            </div>
+            <div class="col-3" name="sidebar" style="display: none">
+                <div name="sidebar_content"></div>
+                <button type="button" class="btn btn-outline-secondary" name="sidebar_close">Close</button>
+            </div>
+        </div>
+
+        <!--Change Icon Color Modal-->
+        <div class="modal" tabindex="-1" role="dialog" id="colorChange">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Change Icon Color</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Select File to Upload</label>
+                            <div class="input-group">
+                                <input type="text" class="inp" id="colorPicker">
+                                <div class="palette" id="colorPalette"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="changeColor">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--File Upload Modal-->
+        <div class="modal" tabindex="-1" role="dialog" id="fildUpload">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Upload GeoJSON Files</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Select File to Upload</label>
+                            <div class="input-group">
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="GeoJsonFile">
+                                    <label class="custom-file-label" for="GeoJsonFile">Choose file</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="GeoJsonUpload">Upload</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--Color Picker lib-->
+    <script src="la_color_picker.js"></script>
+    <!--Bootstrap Libraries-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    <!-- JS Class to add custom buttons on the map -->
+    <script src="map_additions.js"></script>
+    <script>
+        var map, drawingManager, infowindow, bounds;
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 53.350140, lng: -6.266155 },
+                zoom: 18,
+                mapTypeControl: true,
+                zoomControl: true,
+                scaleControl: true,
+                streetViewControl: false,
+                fullscreenControl: false
+            });
+            map.data.setStyle({
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: 'blue',
+                    fillOpacity: 0.5,
+                    strokeColor: 'blue',
+                    strokeWeight: 1
+                }
+            });
+
+            // Create the DIV to hold the additional control buttons
+            var addtionControlDiv = new MapAdditions({
+                map: map,
+                btns: [
+                    // show File upload modal after a click
+                    { innerHTML: "Upload GeoJSON File", callback: function () { $('#fildUpload').modal('show') } },
+                    // enable google drawing lib after a click by calling enableDrawing func
+                    { innerHTML: "Lasso", callback: enableDrawing },
+                    { class: 'color_picker_btn', innerHTML: "Change Icon Color", callback: function () { $('#colorChange').modal('show') } },
+                ]
+            });
+
+            // add and hide drawing tools to the map
+            drawingManager = new google.maps.drawing.DrawingManager({
+                drawingMode: google.maps.drawing.OverlayType.RECTANGLE,
+                drawingControl: false,      // hide drawing control
+                drawingControlOptions: {
+                    drawingModes: ['rectangle']
+                },
+                rectangleOptions: {
+                    fillColor: '#3393FF',
+                    fillOpacity: 0.2,
+                    strokeColor: '#3393FF',
+                    strokeOpacity: 0.5,
+                    strokeWeight: 4,
+                    draggable: true,
+                    clickable: false,
+                    editable: true,
+                    zIndex: 1
+                }
+            });
+            drawingManager.setMap(map);
+            drawingManager.setDrawingMode(null);
+
+            infowindow = new google.maps.InfoWindow();
+            bounds  = new google.maps.LatLngBounds();
+        }
+
+        // switch drawing mode to rectangle after this function is invoked
+        function enableDrawing() {
+            drawingManager.setDrawingMode('rectangle');
+            // rest drawing mode back to null in order to enable editing and dragging for the rectangle
+            google.maps.event.addListener(drawingManager, 'rectanglecomplete', function (rectangle) {
+                drawingManager.setDrawingMode(null);
+                var selected_points = points_is_inside_rectangle(map, rectangle);
+
+                // listen on rectangle change event and re-select points
+                google.maps.event.addListener(rectangle, 'bounds_changed', function () {
+                    points_is_inside_rectangle(map, rectangle);
+                });
+            });
+        }
+
+        // return all points in the rectangle
+        function points_is_inside_rectangle(map, rectangle) {
+            var points = [];
+            map.data.forEach(function (feature) {
+                var latlng = feature.getGeometry().get()
+                if (rectangle && rectangle.getBounds && latlng && rectangle.getBounds().contains(latlng)) {
+                    points.push(feature);
+                }
+            });
+            $("div[name=sidebar_content]").empty();
+            $("div[name=sidebar]").show();
+            $("div[name=sidebar_content]").append("<h6>Selected Marker Points</h6>"
+                + "<table class='table table-sm'><thead><tr><th>Address</th><th>Lat</th><th>Long</th></tr>"
+                + "</thead><tbody name='selected_points'></tbody></table></div>");
+            points.forEach(function (point) {
+                p = point.getGeometry().get();
+                address = point.getProperty("address");
+                $("tbody[name=selected_points]").append("<tr><td>" + (address == undefined ? "Not found" : address) + "</td><td>" + p.lat().toFixed(4) + "</td><td>" + p.lng().toFixed(4) + "</td></tr>");
+            });
+            return points;
+        }
+
+        $(document).ready(function (e) {
+            // Update file name after selected files in file brower
+            $('.custom-file-input').on('change', function () {
+                let fileName = $(this).val().split('\\').pop();
+                $(this).next('.custom-file-label').addClass("selected").html(fileName);
+            });
+
+            var unique_latlngs = {}  // hashtable to record unique coordinates, use to prevent insert duplicate points
+
+            // Add geojson points to the map
+            $('#GeoJsonUpload').on('click', function () {
+                var file_data = $('#GeoJsonFile').prop('files')[0];
+
+                if (file_data != undefined) {
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        results = JSON.parse(reader.result);
+
+                        for (var i = 0; i < results.features.length; i++) {
+                            var coords = results.features[i].geometry.coordinates;
+                            // update bounds to recenter the map
+                            var lat = coords[1];
+                            var lng = coords[0];
+                            var latlng = new google.maps.LatLng(lat, lng);
+                            bounds.extend(latlng);
+
+                            // remove the old point if its coordinate exists in the latest upload
+                            if (lat in unique_latlngs) {  //check if the lat in the first level keys
+                                if (lng in unique_latlngs[lat]) { // if the lng in the next level
+                                    // get data.feature and remove it from the map
+                                    var feature = unique_latlngs[lat][lng];
+                                    map.data.remove(feature);
+                                }
+                            }
+
+                            var geojson = {
+                                "type": "FeatureCollection",
+                                "features": [results.features[i]]
+                            };
+                            // load unique data to the map
+                            var feature = map.data.addGeoJson(geojson);
+                            
+                            // update data.feature to hashtable
+                            if (!(lat in unique_latlngs)) { // if the point is not in the hashtable
+                                unique_latlngs[lat] = {};
+                                unique_latlngs[lat][lng] = feature[0];
+                            } else { // if the lat exists
+                                unique_latlngs[lat][lng] = feature[0];
+                            }
+                        }
+
+                        // recenter and zoom the map
+                        map.fitBounds(bounds);       // auto-zoom
+                        map.panToBounds(bounds);     // auto-center
+
+                        // add click listener to data to show details on click
+                        map.data.addListener('click', function (event) {
+                            var myHTML = "<table><tr><th>Address</th><td>" + event.feature.getProperty("address") + "</td><tr>" +
+                                "<tr><th>Lat</th><td>" + event.feature.getGeometry().get().lat() + "</td></tr>" +
+                                "<tr><th>Long</th><td>:" + event.feature.getGeometry().get().lng() + "</td></tr></table>";
+                            infowindow.setContent("<div style='width:auto; text-align: center;'>" + myHTML + "</div>");
+                            infowindow.setPosition(event.feature.getGeometry().get());
+                            infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -30) });
+                            infowindow.open(map);
+                        });
+
+                        // reset file input
+                        $('#GeoJsonFile').val('');
+                        $('#GeoJsonFile').next('label').text("Choose File");
+                        // close modal
+                        $("#fildUpload").modal('hide');
+                    };
+                    reader.readAsText(file_data);
+                }
+            });
+
+            // Save changed color
+            $("#changeColor").on('click', function () {
+                var color = $("#colorPicker").val();
+                map.data.setStyle({
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: color,
+                        fillOpacity: 0.5,
+                        strokeColor: color,
+                        strokeWeight: 1
+                    }
+                });
+                $("#colorChange").modal('hide');
+            });
+
+            // close sidebar
+            $("button[name=sidebar_close]").on('click', function () {
+                $("div[name=sidebar]").hide();
+            });
+        });
+    </script>
+    <!--Load the API from the specified URL
+    * The async attribute allows the browser to render the page while the API loads
+    * The key parameter will contain your own API key (which is not needed for this tutorial)
+    * The callback parameter executes the initMap() function
+    -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEDY1KDojuHZReUlo4Ll3zLoT7ucxovgM&libraries=drawing,geometry&callback=initMap">
+        </script>
+</body>
+
+</html>
